@@ -1,0 +1,286 @@
+---
+title: "Multiple Linear Regression Assignment on Customer Data"
+author : "Sudharani Rangapale"
+date: "July 02 , 2017"
+output:
+  html_document:
+    toc_depth: 3
+    toc_float: true
+  
+
+---
+#Write a code to clear the environment if needed
+```{r}
+rm(list=ls(all=TRUE))
+
+```
+
+#Write a code to set the working directory.
+```{r }
+setwd("C:\\Users/Sony/Desktop/csv")
+```
+#Write a code to read the csv file as "data" as per required
+```{r eval=TRUE }
+cust_data=read.csv("C:\\Users/Sony/Desktop/csv/CustomerData_Assignment.csv",header=TRUE)
+
+```
+#Write a code to know the names of the attributes
+```{r}
+names(cust_data)
+
+```
+#Write a code to find the dimensions of the data
+```{r}
+dim(cust_data)
+```
+
+#Write a code to see the head  and tail of the dataset atleast 10rows
+```{r }
+head(cust_data,n=10)
+tail(cust_data,n=10)
+```
+#write the code to see datatypes
+```{r}
+str(cust_data)
+```
+
+#Write a code to remove the unuseful variables and store the data 
+```{r }
+sum(is.na(cust_data))
+str(cust_data)
+cust_data=cust_data[,-which(names(cust_data) == "City" | names(cust_data)=="CustomerID")]
+```
+#Write a code to observe the variables and convert them into the required formats
+```{r}
+  cat_attr=c("FavoriteChannelOfTransaction","FavoriteGame")
+  num_attr=c(setdiff(names(cust_data),c("FavoriteChannelOfTransaction","FavoriteGame")))
+  cust_data[num_attr]=data.frame(lapply(cust_data[num_attr], 2,FUN=as.numeric))
+
+```
+#Check the changes again using str() command
+```{r }
+
+str(cust_data)
+
+```
+#Write a Code to seperate the target
+```{r}
+Target_data=cust_data["TotalRevenueGenerated"]
+
+```
+#Write a code to get the numerical attributes and categorical attributes and store them numerical attributes as num_df
+```{r }
+
+cat_df=cust_data[,cat_attr]
+num_df=subset(cust_data,select=num_attr)
+
+```
+#Write a code for Normalizing the num_df
+```{r}
+library(vegan)
+num_df=decostand(num_df,method="standardize")
+num_df$TotalRevenueGenerated=NULL
+
+```
+#Write a code to observe the correlation between the  attributes 
+```{r}
+cor(num_df)
+```
+#Write a code to plot the corrplot of correlation between the attributes
+```{r}
+library(corrplot)
+
+corrplot(cor(num_df), method = "number")
+
+```
+#Write a code to combine the numerical,categorical data along with the target 
+```{r}
+combined_data=cbind(num_df,cat_df,Target_data)
+str(combined_data)
+
+```
+#Write a code to set the seed and comment why it is used.
+```{r}
+
+set.seed(29)
+
+```
+# Write a code to get the train rows using sample 
+
+```{r}
+
+train_rows <- sample(x = 1:nrow(combined_data), size = 0.7*nrow(cust_data))
+
+```
+#Write a code to get the train and test 
+```{r}
+train_data <- combined_data[train_rows, ]
+
+test_data <- combined_data[-train_rows, ]
+
+```
+
+#Write a code to just plot the graphs between attributes and targets
+```{r}
+par(mfrow = c(3,3))
+plot(combined_data$ NoOfChildren,combined_data$TotalRevenueGenerated)
+
+plot(combined_data$ MinAgeOfChild,combined_data$TotalRevenueGenerated)
+
+plot(combined_data$ MaxAgeOfChild ,combined_data$TotalRevenueGenerated)
+
+plot(combined_data$ Tenure ,combined_data$TotalRevenueGenerated)
+plot(combined_data$ FrquncyOfPurchase ,combined_data$TotalRevenueGenerated)
+plot(combined_data$  NoOfUnitsPurchased,combined_data$TotalRevenueGenerated)
+plot(combined_data$ FrequencyOFPlay ,combined_data$TotalRevenueGenerated)
+plot(combined_data$ NoOfGamesPlayed,combined_data$TotalRevenueGenerated)
+plot(combined_data$ NoOfGamesBought,combined_data$TotalRevenueGenerated)
+
+
+```
+
+#Write a code to form a linear regression model 
+```{r}
+model_basic=lm(TotalRevenueGenerated~NoOfChildren+MinAgeOfChild+MaxAgeOfChild+Tenure+FrquncyOfPurchase+NoOfUnitsPurchased+FrequencyOFPlay+NoOfGamesPlayed+NoOfGamesBought,data=train_data)
+
+```
+
+#Write a code to plot the model
+```{r}
+par(mfrow = c(3,3))
+plot(model_basic)
+```
+#Write a code to check the summary of the model 
+```{r}
+summary(model_basic)
+```
+#Write a code to predict the value of the target on the linear model 
+```{r}
+without_target=num_attr[-length(num_attr)]
+pred_values_ln=predict(model_basic,test_data[without_target])
+```
+
+#Write a code to use stepAIC
+```{r}
+library(MASS)
+model_aic <- stepAIC(model_basic, direction = "both")
+
+summary(model_aic)
+
+par(mfrow = c(3,3))
+
+plot(model_aic)
+
+summary(num_df)
+
+```
+
+#Write a code to predict it on stepAIC
+```{r}
+
+pred_values_aic=predict(model_aic,test_data[without_target])
+```
+#Write a code to check the multicollinearity in the lm model 
+```{r}
+library(car)
+
+vif(model_basic)
+```
+
+#Write a code to check the multicollinearity problem
+```{r}
+
+vif(model_aic)
+
+
+```
+
+### Error Metrics for Regression
+
+```{r}
+#Mean Absolute Error (MAE)
+mae <- function(actual, predicted){
+ 
+ error <- actual - predicted
+ 
+ mean(abs(error))
+ 
+}
+
+#Mean Squared Error (MSE)
+
+mse <- function(actual, predicted){
+ 
+ error <- actual - predicted
+ 
+ mean(error^2)
+ 
+}
+
+#Root Mean Squared Error (RMSE)
+rmse <- function(actual, predicted){
+ 
+ error <- actual - predicted
+ 
+ sqrt(mean(error^2))
+ 
+}
+
+#Mean Absolute Percentage Error (MAPE)
+mape <- function(actual, predicted){
+ 
+ error <- actual - predicted
+ 
+ mean(abs(error/actual))*100
+}
+ ```
+ 
+ #Write a code to evaluate the error in the prediction of AIC
+
+```{r}
+mae(test_data$TotalRevenueGenerated, pred_values_aic)
+mse(test_data$TotalRevenueGenerated, pred_values_aic)
+rmse(test_data$TotalRevenueGenerated, pred_values_aic)
+mape(test_data$TotalRevenueGenerated, pred_values_aic)
+
+# OR
+
+library(DMwR)
+
+regr.eval(test_data$TotalRevenueGenerated, pred_values_aic)
+
+
+
+```
+#Write a code to evaluate the error on the prediction of Linear Regression
+```{r}
+mae(test_data$TotalRevenueGenerated, pred_values_ln)
+mse(test_data$TotalRevenueGenerated, pred_values_ln)
+rmse(test_data$TotalRevenueGenerated, pred_values_ln)
+mape(test_data$TotalRevenueGenerated, pred_values_ln)
+
+# OR
+
+regr.eval(test_data$TotalRevenueGenerated, pred_values_ln)
+
+
+
+```
+
+
+
+#stepAIC by removing tenure
+```{r}
+new_model <- lm(formula = TotalRevenueGenerated~NoOfGamesBought+NoOfChildren+MinAgeOfChild+MaxAgeOfChild+FrquncyOfPurchase+FrquncyOfPurchase+NoOfUnitsPurchased+FrequencyOFPlay+NoOfGamesPlayed +NoOfGamesBought,data = train_data)
+summary(new_model)
+
+without_target1=num_attr[-length(num_attr)]
+pred_values_ln1=predict(new_model,test_data[without_target])
+
+regr.eval(test_data$TotalRevenueGenerated, pred_values_ln1)
+vif(new_model)
+
+```
+
+
+
